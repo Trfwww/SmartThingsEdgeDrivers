@@ -10,3 +10,9 @@ components:
     version: 1
   categories:
     - name: Switch
+- id: switch1
+  capabilities:
+  - id: switch
+    version: 1
+  categories:
+    - name: Fan

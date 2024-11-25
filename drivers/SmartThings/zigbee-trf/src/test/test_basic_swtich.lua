@@ -16,20 +16,18 @@ local test = require "integration_test"
 local t_utils = require "integration_test.utils"
 local clusters = require "st.zigbee.zcl.clusters"
 local zigbee_test_utils = require "integration_test.zigbee_test_utils"
-local capabilities = require "st.capabilities"
 
 local OnOff = clusters.OnOff
-local Level = clusters.Level
 
 local mock_device = test.mock_device.build_test_zigbee_device(
-  { profile = t_utils.get_profile_definition("on-off-level.yml"),
+  { profile = t_utils.get_profile_definition("basic-switch.yml"),
     fingerprinted_endpoint_id = 0x01,
     zigbee_endpoints = {
       [1] = {
         id = 1,
-        manufacturer = "OSRAM",
-        model = "LIGHTIFY A19 ON/OFF/DIM",
-        server_clusters = {0x0006, 0x0008}
+        manufacturer = "REXENSE",
+        model = "HY0002",
+        server_clusters = {0x0006, 0x0B04, 0x0702}
       }
     }
   }
@@ -53,10 +51,6 @@ test.register_coroutine_test(
       mock_device.id,
       zigbee_test_utils.build_bind_request(mock_device, zigbee_test_utils.mock_hub_eui, OnOff.ID)
     })
-    test.socket.zigbee:__expect_send({
-      mock_device.id,
-      zigbee_test_utils.build_bind_request(mock_device, zigbee_test_utils.mock_hub_eui, Level.ID)
-    })
 
     test.socket.zigbee:__expect_send(
       {
@@ -64,24 +58,8 @@ test.register_coroutine_test(
         OnOff.attributes.OnOff:configure_reporting(mock_device, 0, 300, 1)
       }
     )
-    test.socket.zigbee:__expect_send(
-      {
-        mock_device.id,
-        Level.attributes.CurrentLevel:configure_reporting(mock_device, 0, 300, 1)
-      }
-    )
-
     test.socket.zigbee:__expect_send({ mock_device.id, OnOff.attributes.OnOff:read(mock_device) })
-    test.socket.zigbee:__expect_send({ mock_device.id, Level.attributes.CurrentLevel:read(mock_device) })
     mock_device:expect_metadata_update({ provisioning_state = "PROVISIONED" })
-  end
-)
-
-test.register_coroutine_test(
-  "Device added lifecycle event should be handled",
-  function()
-    test.socket.device_lifecycle:__queue_receive({ mock_device.id, "added" })
-    test.socket.capability:__expect_send(mock_device:generate_test_message("main",capabilities.switchLevel.level(100)))
   end
 )
 
@@ -101,14 +79,6 @@ test.register_message_test(
         OnOff.attributes.OnOff:read(mock_device)
       }
     },
-    {
-      channel = "zigbee",
-      direction = "send",
-      message = {
-        mock_device.id,
-        Level.attributes.CurrentLevel:read(mock_device)
-      }
-    }
   },
   {
     inner_block_ordering = "relaxed"
